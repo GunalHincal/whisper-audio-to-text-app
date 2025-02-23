@@ -6,10 +6,9 @@ pydub
 asyncio
 numpy
 
-
-
 # TERMİNALDEN YÜKLEMEK İÇİN
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# pip install streamlit
 # pip install -r requirements.txt
 
 # eğer torch aşağıdaki gibi manuel yüklendiyse cuda belirtilmeden önce aşağıdaki gibi uninstall edilir sonra yukarıdaki satır ile cuda aktif edilecek şekilde geri install edilir 

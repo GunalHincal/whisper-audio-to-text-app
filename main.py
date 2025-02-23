@@ -18,6 +18,7 @@ st.title("🎙️ Ses veya Video Dosyası Yükleyin ve Metne Çevirin")
 ffmpeg_path = which("ffmpeg")
 ffprobe_path = which("ffprobe")
 
+# **FFmpeg Yolunu Manuel Olarak Ayarla (Windows İçin)**
 if ffmpeg_path is None or ffprobe_path is None:
     os.environ["PATH"] += os.pathsep + "C:\\Program Files\\ffmpeg-7.1-essentials_build\\bin"
 
@@ -34,6 +35,9 @@ def is_ffmpeg_available():
         return True
     except FileNotFoundError:
         return False
+
+if not is_ffmpeg_available():
+    st.error("⚠️ FFmpeg bulunamadı! Lütfen sisteminize FFmpeg yükleyin.")
 
 # 🛠 **CUDA Kullanılabilirlik Kontrolü**
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -52,13 +56,12 @@ allocated, reserved = get_gpu_usage()
 st.sidebar.write(f"💾 Ayrılmış Bellek: {allocated:.2f} GB")
 st.sidebar.write(f"🔒 Rezerve Edilen Bellek: {reserved:.2f} GB")
 
-# 📌 **Ses Dönüştürme Fonksiyonu**
+# 📌 **Ses Dönüştürme Fonksiyonu (FFmpeg ile)**
 def convert_to_wav(input_path):
     output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".wav").name
     try:
-        audio = AudioSegment.from_file(input_path)
-        audio = audio.set_frame_rate(16000).set_channels(1)  # 🔄 Whisper için uygun hale getir
-        audio.export(output_path, format="wav")
+        subprocess.run(["ffmpeg", "-i", input_path, "-ac", "1", "-ar", "16000", output_path], 
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         return output_path
     except Exception as e:
         st.error(f"⚠️ Ses dönüştürme hatası: {e}")
