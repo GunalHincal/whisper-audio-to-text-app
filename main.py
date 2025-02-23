@@ -16,6 +16,24 @@ except RuntimeError:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
+# 🔄 FFmpeg Yüklü mü Kontrol Et
+import subprocess
+def install_ffmpeg():
+    if not os.path.exists("ffmpeg"):
+        st.write("🔄 FFmpeg indiriliyor...")
+        ffmpeg_url = "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
+        subprocess.run(["wget", ffmpeg_url, "-O", "ffmpeg.tar.xz"], check=True)
+        subprocess.run(["tar", "-xf", "ffmpeg.tar.xz"], check=True)
+        ffmpeg_bin = [f for f in os.listdir() if f.startswith("ffmpeg") and os.path.isdir(f)][0]
+        os.rename(ffmpeg_bin, "ffmpeg")
+        st.write("✅ FFmpeg başarıyla yüklendi!")
+
+    # 🔄 PATH Değişkenine Ekleyelim
+    os.environ["PATH"] = os.getcwd() + "/ffmpeg:" + os.environ["PATH"]
+
+# 📌 **FFmpeg Kurulumunu Başlat**
+install_ffmpeg()
+
 
 # 🛠 CUDA Optimizasyonları
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
