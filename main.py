@@ -9,6 +9,14 @@ import time
 import torch
 import io  # 🔥 Eklenen kütüphane
 
+import asyncio
+try:
+    asyncio.get_running_loop()
+except RuntimeError:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+
 # 🛠 CUDA Optimizasyonları
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 torch.cuda.empty_cache()
