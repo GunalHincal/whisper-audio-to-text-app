@@ -93,7 +93,7 @@ if uploaded_file is not None:
         st.write("🔄 Ses dosyanız işleniyor, lütfen bekleyin...")
 
         # 🔄 Large model yerine medium model kullan (VRAM Optimizasyonu)
-        whisper_model = whisper.load_model("tmedium")
+        whisper_model = whisper.load_model("medium")
 
         result = transcribe_audio(wav_filename, whisper_model)
         os.remove(wav_filename)
