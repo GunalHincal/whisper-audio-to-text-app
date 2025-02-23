@@ -1,53 +1,44 @@
+import os
 import streamlit as st
 import whisper
 import tempfile
 import json
-import ffmpeg
 import time
 import torch
 import io
 import subprocess
-
-import os
+from pydub import AudioSegment
 from pydub.utils import which
-from pydub import AudioSegment # ✅ Pydub kullanarak FFmpeg ihtiyacını çözüyoruz
 
-# FFmpeg'in yolunu manuel olarak tanımla
+# 🏗️ **Sayfa Yapılandırması**
+st.set_page_config(page_title="Whisper Ses Transkripsiyon", layout="centered")
+st.title("🎙️ Ses veya Video Dosyası Yükleyin ve Metne Çevirin")
+
+# 🔄 **FFmpeg ve FFprobe Yolunu Tanımla**
 ffmpeg_path = which("ffmpeg")
 ffprobe_path = which("ffprobe")
 
-if ffmpeg_path is None:
-    os.environ["PATH"] += os.pathsep + "C:\\Program Files\\FFmpeg\\bin"
-    os.environ["PATH"] += os.pathsep + "C:\\ffmpeg\\bin"
-    os.environ["PATH"] += os.pathsep + "C:\\ffmpeg"
+if ffmpeg_path is None or ffprobe_path is None:
+    os.environ["PATH"] += os.pathsep + "C:\\Program Files\\ffmpeg-7.1-essentials_build\\bin"
 
 # Pydub'un FFmpeg kullanmasını sağla
 AudioSegment.converter = which("ffmpeg")
 AudioSegment.ffmpeg = which("ffmpeg")
 AudioSegment.ffprobe = which("ffprobe")
 
-
-# 🏗️ Sayfa Yapılandırması
-st.set_page_config(page_title="Whisper Ses Transkripsiyon", layout="centered")
-
-st.title("🎙️ Ses veya Video Dosyası Yükleyin ve Metne Çevirin")
-
 # 🔄 **FFmpeg'in sistemde olup olmadığını kontrol et**
 def is_ffmpeg_available():
     try:
         subprocess.run(["ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        subprocess.run(["ffprobe", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         return True
     except FileNotFoundError:
         return False
 
-# 🔄 FFmpeg kullanılabilir değilse hata ver
-if not is_ffmpeg_available():
-    st.error("⚠️ FFmpeg bulunamadı! Lütfen sisteminize FFmpeg yükleyin veya 'ffmpeg-python' kütüphanesini kullanın.")
-
 # 🛠 **CUDA Kullanılabilirlik Kontrolü**
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-# 📊 GPU Kullanımı Fonksiyonu
+# 📌 **GPU Kullanımı Fonksiyonu**
 def get_gpu_usage():
     if device == "cuda":
         allocated = torch.cuda.memory_allocated() / 1024**3
@@ -55,7 +46,7 @@ def get_gpu_usage():
         return allocated, reserved
     return 0, 0
 
-# 🎯 GPU Kullanımını Sidebar'da Göster
+# 🎯 **GPU Kullanımını Sidebar'da Göster**
 st.sidebar.header("📊 GPU Kullanımı")
 allocated, reserved = get_gpu_usage()
 st.sidebar.write(f"💾 Ayrılmış Bellek: {allocated:.2f} GB")
