@@ -6,38 +6,14 @@ import json
 import time
 import torch
 import io
-import subprocess
-from pydub import AudioSegment
-from pydub.utils import which
+import wave
+import audioread
+import numpy as np
+from scipy.io.wavfile import write
 
 # 🏗️ **Sayfa Yapılandırması**
 st.set_page_config(page_title="Whisper Ses Transkripsiyon", layout="centered")
 st.title("🎙️ Ses veya Video Dosyası Yükleyin ve Metne Çevirin")
-
-# 🔄 **FFmpeg ve FFprobe Yolunu Tanımla**
-ffmpeg_path = which("ffmpeg")
-ffprobe_path = which("ffprobe")
-
-# **FFmpeg Yolunu Manuel Olarak Ayarla (Windows İçin)**
-if ffmpeg_path is None or ffprobe_path is None:
-    os.environ["PATH"] += os.pathsep + "C:\\Program Files\\ffmpeg-7.1-essentials_build\\bin"
-
-# Pydub'un FFmpeg kullanmasını sağla
-AudioSegment.converter = which("ffmpeg")
-AudioSegment.ffmpeg = which("ffmpeg")
-AudioSegment.ffprobe = which("ffprobe")
-
-# 🔄 **FFmpeg'in sistemde olup olmadığını kontrol et**
-def is_ffmpeg_available():
-    try:
-        subprocess.run(["ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-        subprocess.run(["ffprobe", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-        return True
-    except FileNotFoundError:
-        return False
-
-if not is_ffmpeg_available():
-    st.error("⚠️ FFmpeg bulunamadı! Lütfen sisteminize FFmpeg yükleyin.")
 
 # 🛠 **CUDA Kullanılabilirlik Kontrolü**
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -56,12 +32,22 @@ allocated, reserved = get_gpu_usage()
 st.sidebar.write(f"💾 Ayrılmış Bellek: {allocated:.2f} GB")
 st.sidebar.write(f"🔒 Rezerve Edilen Bellek: {reserved:.2f} GB")
 
-# 📌 **Ses Dönüştürme Fonksiyonu (FFmpeg ile)**
+# 📌 **FFmpeg olmadan ses dönüştürme fonksiyonu**
 def convert_to_wav(input_path):
+    """ FFmpeg kullanmadan ses dosyasını WAV formatına çevirir """
     output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".wav").name
     try:
-        subprocess.run(["ffmpeg", "-i", input_path, "-ac", "1", "-ar", "16000", output_path], 
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        with audioread.audio_open(input_path) as audio_file:
+            sample_rate = audio_file.samplerate
+            channels = audio_file.channels
+            audio_data = np.concatenate([np.frombuffer(buf, dtype=np.int16) for buf in audio_file])
+            
+            # Eğer stereo ise, tek kanala (mono) dönüştür
+            if channels > 1:
+                audio_data = audio_data.reshape(-1, channels).mean(axis=1).astype(np.int16)
+            
+            write(output_path, sample_rate, audio_data)
+        
         return output_path
     except Exception as e:
         st.error(f"⚠️ Ses dönüştürme hatası: {e}")
@@ -102,7 +88,7 @@ if uploaded_file is not None:
     temp_audio_file.write(uploaded_file.read())
     temp_audio_file.close()
 
-    # 🎯 WAV formatına çevir
+    # 🎯 WAV formatına çevir (FFmpeg olmadan)
     wav_filename = convert_to_wav(temp_audio_file.name)
     os.remove(temp_audio_file.name)
 
