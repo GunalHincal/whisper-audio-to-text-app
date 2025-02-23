@@ -1,14 +1,31 @@
 import streamlit as st
 import whisper
 import tempfile
-import os
 import json
 import ffmpeg
 import time
 import torch
 import io
-from pydub import AudioSegment  # ✅ Pydub kullanarak FFmpeg ihtiyacını çözüyoruz
 import subprocess
+
+import os
+from pydub.utils import which
+from pydub import AudioSegment # ✅ Pydub kullanarak FFmpeg ihtiyacını çözüyoruz
+
+# FFmpeg'in yolunu manuel olarak tanımla
+ffmpeg_path = which("ffmpeg")
+ffprobe_path = which("ffprobe")
+
+if ffmpeg_path is None:
+    os.environ["PATH"] += os.pathsep + "C:\\Program Files\\FFmpeg\\bin"
+    os.environ["PATH"] += os.pathsep + "C:\\ffmpeg\\bin"
+    os.environ["PATH"] += os.pathsep + "C:\\ffmpeg"
+
+# Pydub'un FFmpeg kullanmasını sağla
+AudioSegment.converter = which("ffmpeg")
+AudioSegment.ffmpeg = which("ffmpeg")
+AudioSegment.ffprobe = which("ffprobe")
+
 
 # 🏗️ Sayfa Yapılandırması
 st.set_page_config(page_title="Whisper Ses Transkripsiyon", layout="centered")
