@@ -1,4 +1,3 @@
-# STREAMLIT UYGULAMASI
 import streamlit as st
 import whisper
 import tempfile
@@ -7,48 +6,37 @@ import json
 import ffmpeg
 import time
 import torch
-import io  # 🔥 Eklenen kütüphane
-
-import asyncio
-try:
-    asyncio.get_running_loop()
-except RuntimeError:
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-# 🔄 FFmpeg Yüklü mü Kontrol Et
+import io
+from pydub import AudioSegment  # ✅ Pydub kullanarak FFmpeg ihtiyacını çözüyoruz
 import subprocess
-def install_ffmpeg():
-    if not os.path.exists("ffmpeg"):
-        st.write("🔄 FFmpeg indiriliyor...")
-        ffmpeg_url = "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
-        subprocess.run(["wget", ffmpeg_url, "-O", "ffmpeg.tar.xz"], check=True)
-        subprocess.run(["tar", "-xf", "ffmpeg.tar.xz"], check=True)
-        ffmpeg_bin = [f for f in os.listdir() if f.startswith("ffmpeg") and os.path.isdir(f)][0]
-        os.rename(ffmpeg_bin, "ffmpeg")
-        st.write("✅ FFmpeg başarıyla yüklendi!")
-
-    # 🔄 PATH Değişkenine Ekleyelim
-    os.environ["PATH"] = os.getcwd() + "/ffmpeg:" + os.environ["PATH"]
-
-# 📌 **FFmpeg Kurulumunu Başlat**
-install_ffmpeg()
-
-
-# 🛠 CUDA Optimizasyonları
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-torch.cuda.empty_cache()
-torch.backends.cudnn.benchmark = True
-torch.backends.cudnn.deterministic = False
-
-# 📊 GPU Kullanımı Fonksiyonu
-def get_gpu_usage():
-    allocated = torch.cuda.memory_allocated() / 1024**3
-    reserved = torch.cuda.memory_reserved() / 1024**3
-    return allocated, reserved
 
 # 🏗️ Sayfa Yapılandırması
 st.set_page_config(page_title="Whisper Ses Transkripsiyon", layout="centered")
+
+st.title("🎙️ Ses veya Video Dosyası Yükleyin ve Metne Çevirin")
+
+# 🔄 **FFmpeg'in sistemde olup olmadığını kontrol et**
+def is_ffmpeg_available():
+    try:
+        subprocess.run(["ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        return True
+    except FileNotFoundError:
+        return False
+
+# 🔄 FFmpeg kullanılabilir değilse hata ver
+if not is_ffmpeg_available():
+    st.error("⚠️ FFmpeg bulunamadı! Lütfen sisteminize FFmpeg yükleyin veya 'ffmpeg-python' kütüphanesini kullanın.")
+
+# 🛠 **CUDA Kullanılabilirlik Kontrolü**
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+# 📊 GPU Kullanımı Fonksiyonu
+def get_gpu_usage():
+    if device == "cuda":
+        allocated = torch.cuda.memory_allocated() / 1024**3
+        reserved = torch.cuda.memory_reserved() / 1024**3
+        return allocated, reserved
+    return 0, 0
 
 # 🎯 GPU Kullanımını Sidebar'da Göster
 st.sidebar.header("📊 GPU Kullanımı")
@@ -56,29 +44,24 @@ allocated, reserved = get_gpu_usage()
 st.sidebar.write(f"💾 Ayrılmış Bellek: {allocated:.2f} GB")
 st.sidebar.write(f"🔒 Rezerve Edilen Bellek: {reserved:.2f} GB")
 
-st.title("🎙️ Ses veya Video Dosyası Yükleyin ve Metne Çevirin")
-
-# 📌 Ses Dönüştürme Fonksiyonu
+# 📌 **Ses Dönüştürme Fonksiyonu**
 def convert_to_wav(input_path):
     output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".wav").name
     try:
-        (
-            ffmpeg
-            .input(input_path)
-            .output(output_path, format="wav", acodec="pcm_s16le", ac=1, ar="16000")
-            .run(quiet=True, overwrite_output=True)
-        )
+        audio = AudioSegment.from_file(input_path)
+        audio = audio.set_frame_rate(16000).set_channels(1)  # 🔄 Whisper için uygun hale getir
+        audio.export(output_path, format="wav")
         return output_path
     except Exception as e:
         st.error(f"⚠️ Ses dönüştürme hatası: {e}")
         return None
 
-# 📌 Transkripsiyon Fonksiyonu
+# 📌 **Transkripsiyon Fonksiyonu**
 def transcribe_audio(audio_path, model):
     result = model.transcribe(audio_path, fp16=False)
     return result
 
-# 📌 **Manuel SRT Dosyası Üreten Fonksiyon**
+# 📌 **SRT Dosyası Üreten Fonksiyon**
 def generate_srt(segments):
     srt_content = ""
     for i, segment in enumerate(segments):
@@ -94,7 +77,7 @@ def generate_srt(segments):
 
     return srt_content
 
-# 📌 Dosya Yükleme Bileşeni
+# 📌 **Dosya Yükleme Bileşeni**
 uploaded_file = st.file_uploader(
     "Bir ses veya video dosyası yükleyin (MP3, WAV, MP4, M4A, OGG, CAF, AAC, FLAC)",
     type=["mp3", "wav", "mp4", "m4a", "ogg", "caf", "aac", "flac"]
@@ -115,8 +98,8 @@ if uploaded_file is not None:
     if wav_filename:
         st.write("🔄 Ses dosyanız işleniyor, lütfen bekleyin...")
 
-        # 🔄 Medium model kullan (VRAM optimizasyonu)
-        whisper_model = whisper.load_model("medium").to("cuda")
+        # 🔄 **Medium model kullan ve GPU varsa ona yükle**
+        whisper_model = whisper.load_model("medium").to(device)
 
         result = transcribe_audio(wav_filename, whisper_model)
         os.remove(wav_filename)
