@@ -13,8 +13,3 @@ ffmpeg-python
 # torchaudio==2.1.0
 # pip uninstall torch torchvision torchaudio  
 # (burası torch cuda belirtilmeden yüklendiyse çalıştırılır önce cpu lu torch versiyonu uninstall etmek için sonra yukrıdaki kod satırındaki gibi cuda aktif edilecek şekilde install yapılır.)
-
-
-
-
-
