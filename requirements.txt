@@ -5,6 +5,7 @@ ffmpeg-python
 pydub
 numpy
 psutil
+llvmlite==0.40.0
 
 
 # TERMİNALDEN YÜKLEMEK İÇİN
