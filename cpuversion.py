@@ -50,15 +50,19 @@ def convert_to_wav(input_path):
 # 📌 **Transkripsiyon Fonksiyonu (İlerleme Çubuğu ile)**
 def transcribe_audio(audio_path, model):
     """ Whisper modeli ile transkripsiyon yapar ve ilerleme çubuğunu günceller. """
+    
+    # 🟢 Transkripsiyon Başlıyor
     result = model.transcribe(audio_path, fp16=False)
     
-    # 🔹 Segment sayısına göre ilerleme çubuğunu güncelle
+    # 🔹 Segment sayısını al
     num_segments = len(result["segments"])
+
+    if num_segments > 0:
     
-    for i, _ in enumerate(result["segments"]):
-        progress = int(((i + 1) / num_segments) * 100)  # İlerleme yüzdesini hesapla
-        progress_bar.progress(progress)
-        time.sleep(0.1)  # Küçük bir gecikme ekleyerek güncellemeleri görmeyi sağla
+        for i, _ in enumerate(result["segments"]):
+            progress = int(((i + 1) / num_segments) * 100)  # İlerleme yüzdesini hesapla
+            progress_bar.progress(progress)
+            time.sleep(0.1)  # Küçük bir gecikme ekleyerek güncellemeleri görmeyi sağla
     
     return result
 
@@ -104,7 +108,7 @@ if uploaded_file is not None:
         # 🔄 **Medium model kullan (CPU'ya alındı)**
         whisper_model = whisper.load_model("medium").to("cpu")  # 🔥 CPU'ya geçirildi
 
-        result = transcribe_audio(wav_filename, whisper_model)
+        result = transcribe_audio(wav_filename, whisper_model, progress_bar)
         os.remove(wav_filename)
 
         # 🎯 **İşlem tamamlandı, ilerleme çubuğunu %100 yap**
