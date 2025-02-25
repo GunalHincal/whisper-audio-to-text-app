@@ -1,5 +1,7 @@
 
 streamlit
+whisper
+torch
 git+https://github.com/openai/whisper.git
 ffmpeg-python
 pydub
@@ -10,6 +12,7 @@ llvmlite==0.40.0
 
 # TERMİNALDEN YÜKLEMEK İÇİN
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# pip install --upgrade openai-whisper
 # pip install -r requirements.txt
 
 # eğer torch aşağıdaki gibi manuel yüklendiyse cuda belirtilmeden önce aşağıdaki gibi uninstall edilir sonra yukarıdaki satır ile cuda aktif edilecek şekilde geri install edilir 
