@@ -108,7 +108,7 @@ if uploaded_file is not None:
         # 🔄 **Medium model kullan (CPU'ya alındı)**
         whisper_model = whisper.load_model("medium").to("cpu")  # 🔥 CPU'ya geçirildi
 
-        result = transcribe_audio(wav_filename, whisper_model, progress_bar)
+        result = transcribe_audio(wav_filename, whisper_model)
         os.remove(wav_filename)
 
         # 🎯 **İşlem tamamlandı, ilerleme çubuğunu %100 yap**
