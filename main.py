@@ -105,6 +105,7 @@ if uploaded_file is not None:
 
     if wav_filename:
         st.write("🔄 Ses dosyanız işleniyor, lütfen bekleyin...")
+        status_text.text("🔄 Transkripsiyon devam ediyor...")
 
         # 🔄 Medium model kullan (VRAM optimizasyonu)
         whisper_model = whisper.load_model("medium").to("cuda")
