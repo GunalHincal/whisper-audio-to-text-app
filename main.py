@@ -1,64 +1,75 @@
-import os
 import streamlit as st
 import whisper
 import tempfile
+import os
 import json
+import ffmpeg
 import time
 import torch
-import io
-import wave
-import audioread
-import numpy as np
-from scipy.io.wavfile import write
+import io  # 🔥 Eklenen kütüphane
+import psutil  # 🔥 CPU Kullanımını Gösteren Kütüphane
 
-# 🏗️ **Sayfa Yapılandırması**
-st.set_page_config(page_title="Whisper Ses Transkripsiyon", layout="centered")
-st.title("🎙️ Ses veya Video Dosyası Yükleyin ve Metne Çevirin")
+# 🛠 CUDA Optimizasyonları
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+torch.cuda.empty_cache()
+torch.backends.cudnn.benchmark = True
+torch.backends.cudnn.deterministic = False
 
-# 🛠 **CUDA Kullanılabilirlik Kontrolü**
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-# 📌 **GPU Kullanımı Fonksiyonu**
+# 📊 GPU Kullanımı Fonksiyonu
 def get_gpu_usage():
-    if device == "cuda":
-        allocated = torch.cuda.memory_allocated() / 1024**3
-        reserved = torch.cuda.memory_reserved() / 1024**3
-        return allocated, reserved
-    return 0, 0
+    allocated = torch.cuda.memory_allocated() / 1024**3
+    reserved = torch.cuda.memory_reserved() / 1024**3
+    return allocated, reserved
 
-# 🎯 **GPU Kullanımını Sidebar'da Göster**
+# 📊 RAM Kullanımı Fonksiyonu
+def get_ram_usage():
+    return psutil.virtual_memory().percent
+
+# 🏗️ Sayfa Yapılandırması
+st.set_page_config(page_title="Whisper Ses Transkripsiyon", layout="centered")
+
+# 🎯 GPU Kullanımını Sidebar'da Göster
 st.sidebar.header("📊 GPU Kullanımı")
 allocated, reserved = get_gpu_usage()
 st.sidebar.write(f"💾 Ayrılmış Bellek: {allocated:.2f} GB")
 st.sidebar.write(f"🔒 Rezerve Edilen Bellek: {reserved:.2f} GB")
+st.sidebar.write(f"🖥️ RAM Kullanımı: {get_ram_usage():.2f}%")
 
-# 📌 **FFmpeg olmadan ses dönüştürme fonksiyonu**
+# 📌 **İşlem Durumu için Progress Bar**
+progress_bar = st.sidebar.progress(0)
+status_text = st.sidebar.empty()
+
+st.title("🎙️ Ses veya Video Dosyası Yükleyin ve Metne Çevirin")
+
+# 📌 Ses Dönüştürme Fonksiyonu (FFmpeg ile)
 def convert_to_wav(input_path):
-    """ FFmpeg kullanmadan ses dosyasını WAV formatına çevirir """
+    """ Ses veya video dosyasını WAV formatına çevirir (FFmpeg kullanarak). """
     output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".wav").name
     try:
-        with audioread.audio_open(input_path) as audio_file:
-            sample_rate = audio_file.samplerate
-            channels = audio_file.channels
-            audio_data = np.concatenate([np.frombuffer(buf, dtype=np.int16) for buf in audio_file])
-            
-            # Eğer stereo ise, tek kanala (mono) dönüştür
-            if channels > 1:
-                audio_data = audio_data.reshape(-1, channels).mean(axis=1).astype(np.int16)
-            
-            write(output_path, sample_rate, audio_data)
-        
+        (
+            ffmpeg
+            .input(input_path)
+            .output(output_path, format="wav", acodec="pcm_s16le", ac=1, ar="16000")
+            .run(quiet=True, overwrite_output=True)
+        )
         return output_path
     except Exception as e:
         st.error(f"⚠️ Ses dönüştürme hatası: {e}")
         return None
-
-# 📌 **Transkripsiyon Fonksiyonu**
+    
+# 📌 **Transkripsiyon Fonksiyonu (Manuel İlerleme Güncellemesi ile)**
 def transcribe_audio(audio_path, model):
+    """ Whisper modeli ile transkripsiyon yapar ve ilerleme çubuğunu manuel günceller. """
     result = model.transcribe(audio_path, fp16=False)
+    total_segments = len(result["segments"])
+    
+    for i, _ in enumerate(result["segments"], start=1):
+        progress_bar.progress(i / total_segments)
+        time.sleep(0.1)  # Görsel geri bildirim sağlamak için
+    
     return result
 
-# 📌 **SRT Dosyası Üreten Fonksiyon**
+# 📌 **Manuel SRT Dosyası Üreten Fonksiyon**
 def generate_srt(segments):
     srt_content = ""
     for i, segment in enumerate(segments):
@@ -74,7 +85,7 @@ def generate_srt(segments):
 
     return srt_content
 
-# 📌 **Dosya Yükleme Bileşeni**
+# 📌 Dosya Yükleme Bileşeni
 uploaded_file = st.file_uploader(
     "Bir ses veya video dosyası yükleyin (MP3, WAV, MP4, M4A, OGG, CAF, AAC, FLAC)",
     type=["mp3", "wav", "mp4", "m4a", "ogg", "caf", "aac", "flac"]
@@ -88,15 +99,15 @@ if uploaded_file is not None:
     temp_audio_file.write(uploaded_file.read())
     temp_audio_file.close()
 
-    # 🎯 WAV formatına çevir (FFmpeg olmadan)
+    # 🎯 WAV formatına çevir
     wav_filename = convert_to_wav(temp_audio_file.name)
     os.remove(temp_audio_file.name)
 
     if wav_filename:
         st.write("🔄 Ses dosyanız işleniyor, lütfen bekleyin...")
 
-        # 🔄 **Medium model kullan ve GPU varsa ona yükle**
-        whisper_model = whisper.load_model("medium").to(device)
+        # 🔄 Medium model kullan (VRAM optimizasyonu)
+        whisper_model = whisper.load_model("medium").to("cuda")
 
         result = transcribe_audio(wav_filename, whisper_model)
         os.remove(wav_filename)
