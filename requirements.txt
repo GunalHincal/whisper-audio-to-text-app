@@ -1,23 +1,53 @@
 
 streamlit
 whisper
-torch
+torch==2.0.1
 git+https://github.com/openai/whisper.git
 ffmpeg-python
 pydub
 numpy
 psutil
 llvmlite==0.40.0
+nest_asyncio
 
 
 # TERMİNALDEN YÜKLEMEK İÇİN
+
+# GPU ile çalışacaksan, CUDA 11.8 için uyumlu PyTorch sürümünü şu komutla yükle
+
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 # pip install --upgrade openai-whisper
+
+
+# CUDA kullanmayacaksan PyTorch'un CPU sürümünü şu komutla yükle
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+
+# eğer torch aşağıdaki gibi manuel yüklendiyse "cuda belirtilmeden" önce aşağıdaki gibi uninstall edilir
+# sonra yukarıdaki satır ile cuda aktif edilecek şekilde geri install edilir 
+# torch
+# torchvision
+# torchaudio
+
+
+# burası torch sürümü değiştirilmek istendiğinde çalıştırılıarak önce uninstall edilir sonra 
+# istenilen gpu-cuda ya da cpu versiyonu ihtiyaca göre yukarıdaki kodlardan biri seçilerek install edilir
+# pip uninstall torch torchvision torchaudio 
+
+
+# bütün gereklilikler yüklendikten sonra bu dosya aşağıdaki komutla çalıştırılır
 # pip install -r requirements.txt
 
-# eğer torch aşağıdaki gibi manuel yüklendiyse cuda belirtilmeden önce aşağıdaki gibi uninstall edilir sonra yukarıdaki satır ile cuda aktif edilecek şekilde geri install edilir 
-# torch==2.1.0
-# torchvision==0.16.0
-# torchaudio==2.1.0
-# pip uninstall torch torchvision torchaudio  
-# (burası torch cuda belirtilmeden yüklendiyse çalıştırılır önce cpu lu torch versiyonu uninstall etmek için sonra yukrıdaki kod satırındaki gibi cuda aktif edilecek şekilde install yapılır.)
+
+# streamlit için uygun sürüm
+# pip uninstall torch torchvision torchaudio -y 
+# pip install torch==2.0.0 torchvision==0.15.1 torchaudio==2.0.0
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+
+# whisper, ffmpeg-python ve diğer bağımlılıkları yükleyelim
+# pip install -U whisper ffmpeg-python psutil nest_asyncio
+
+
+
+
