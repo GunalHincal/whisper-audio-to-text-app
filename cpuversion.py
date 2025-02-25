@@ -8,6 +8,12 @@ import torch
 import io
 import ffmpeg
 import psutil  # 🔥 CPU Kullanımını Gösteren Kütüphane
+import asyncio
+import nest_asyncio
+
+# Asenkron döngü başlat
+nest_asyncio.apply()
+
 
 # ✅ **Streamlit yapılandırmasını en başta ayarla!**
 st.set_page_config(page_title="Whisper Ses Transkripsiyon", layout="centered")
@@ -106,7 +112,7 @@ if uploaded_file is not None:
         status_text.text("🔄 Transkripsiyon devam ediyor...")
 
         # 🔄 **Medium model kullan (CPU'ya alındı)**
-        whisper_model = whisper.load_model("medium").to("cpu")  # 🔥 CPU'ya geçirildi
+        whisper_model = whisper.load_model("medium", device="cpu")  # 🔥 CPU'ya geçirildi
 
         result = transcribe_audio(wav_filename, whisper_model)
         os.remove(wav_filename)
